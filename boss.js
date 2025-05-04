@@ -229,6 +229,7 @@ export class Boss {
         
         if (this.phase >= 3) {
             availableAttacks.push('rockStorm');
+            availableAttacks.push('homingCharge'); 
         }
         
         // Randomly select attack
@@ -266,6 +267,19 @@ export class Boss {
                         this.player.mesh.position.z + (Math.random() - 0.5) * 10
                     ));
                 }
+                break;
+            case 'homingCharge':
+                // Store initial positions
+                this.initialBodyPosition = this.mesh.position.clone();
+                this.initialLeftHandPosition = this.leftHand.position.clone();
+                this.initialRightHandPosition = this.rightHand.position.clone();
+                
+                // Calculate charge direction (straight line)
+                this.chargeDirection = new THREE.Vector3(
+                    this.player.mesh.position.x - this.mesh.position.x,
+                    0,
+                    this.player.mesh.position.z - this.mesh.position.z
+                ).normalize();
                 break;
         }
         
@@ -353,6 +367,25 @@ export class Boss {
                     );
                     this.rightHandWarning.visible = true;
                 }
+                break;
+                
+            case 'homingCharge':
+                // Show warning line in charge direction
+                this.warningLine.position.set(
+                    this.mesh.position.x + this.chargeDirection.x * 10,
+                    0.1,
+                    this.mesh.position.z + this.chargeDirection.z * 10
+                );
+                this.warningLine.lookAt(
+                    this.mesh.position.x, 
+                    0.1, 
+                    this.mesh.position.z
+                );
+                this.warningLine.visible = true;
+                
+                // Also show hand warnings
+                this.leftHandWarning.visible = true;
+                this.rightHandWarning.visible = true;
                 break;
         }
     }
@@ -903,6 +936,107 @@ export class Boss {
         }
     }
     
+    homingCharge(deltaTime) {
+        switch(this.attackPhase) {
+            case 0: // Warning phase
+                this.attackPhase = 1;
+                this.attackTimer = 1.2; // Warning time
+                break;
+                
+            case 1: // Preparation phase - hands move up
+                this.attackTimer -= deltaTime;
+                
+                // Move hands up to prepare for homing
+                this.leftHand.position.y += 5 * deltaTime;
+                this.rightHand.position.y += 5 * deltaTime;
+                
+                // Rotate body to face player
+                this.mesh.lookAt(
+                    this.player.mesh.position.x,
+                    this.mesh.position.y,
+                    this.player.mesh.position.z
+                );
+                
+                if (this.attackTimer <= 0) {
+                    this.attackPhase = 2;
+                    this.hideWarnings();
+                    this.chargeTime = 0;
+                    this.chargeDuration = 1.5;
+                    
+                    // Set hands high in the air
+                    this.leftHand.position.y = 8;
+                    this.rightHand.position.y = 8;
+                    
+                    // Boss flashes red to indicate charge
+                    this.mesh.material.color.set(0xff0000);
+                    setTimeout(() => {
+                        this.mesh.material.color.set(0x8B4513);
+                    }, 200);
+                }
+                break;
+                
+            case 2: // Charge phase - body charges forward, hands home in
+                this.chargeTime += deltaTime;
+                const chargeProgress = this.chargeTime / this.chargeDuration;
+                
+                // Body charges in straight line
+                const chargeSpeed = 20 * deltaTime;
+                this.mesh.position.x += this.chargeDirection.x * chargeSpeed;
+                this.mesh.position.z += this.chargeDirection.z * chargeSpeed;
+                
+                // Hands home in on player (homing missile style)
+                this.updateHomingHand(this.leftHand, deltaTime);
+                this.updateHomingHand(this.rightHand, deltaTime);
+                
+                // Check if charge duration is over
+                if (this.chargeTime >= this.chargeDuration) {
+                    this.attackPhase = 3;
+                    this.attackTimer = 1; // Recovery time
+                }
+                break;
+                
+            case 3: // Recovery - return to normal
+                this.attackTimer -= deltaTime;
+                
+                // Move hands back to normal positions
+                this.leftHand.position.lerp(this.initialLeftHandPosition, 3 * deltaTime);
+                this.rightHand.position.lerp(this.initialRightHandPosition, 3 * deltaTime);
+                
+                if (this.attackTimer <= 0) {
+                    // Reset attack
+                    this.currentAttack = null;
+                    this.attackTimer = 2; // Cooldown before next attack
+                }
+                break;
+        }
+    }
+    
+    updateHomingHand(hand, deltaTime) {
+        // Calculate direction to player
+        const directionToPlayer = new THREE.Vector3(
+            this.player.mesh.position.x - hand.position.x,
+            0,
+            this.player.mesh.position.z - hand.position.z
+        ).normalize();
+        
+        // Move hand towards player with homing behavior
+        const homingSpeed = 12 * deltaTime;
+        hand.position.x += directionToPlayer.x * homingSpeed;
+        hand.position.z += directionToPlayer.z * homingSpeed;
+        
+        // Slowly descend
+        if (hand.position.y > 3) {
+            hand.position.y -= 4 * deltaTime;
+        }
+        
+        // Rotate hand to face player
+        hand.lookAt(
+            this.player.mesh.position.x,
+            hand.position.y,
+            this.player.mesh.position.z
+        );
+    }
+    
     takeDamage(amount) {
         this.health = Math.max(0, this.health - amount);
         
@@ -951,6 +1085,13 @@ export class Boss {
         if (this.currentAttack === 'handThrow' && this.attackPhase === 2) {
             const hand = this.throwHand === 'left' ? this.leftHand : this.rightHand;
             if (checkHandCollision(hand)) {
+                return true;
+            }
+        }
+        
+        // Check homing charge collision
+        if (this.currentAttack === 'homingCharge' && this.attackPhase === 2) {
+            if (checkHandCollision(this.leftHand) || checkHandCollision(this.rightHand)) {
                 return true;
             }
         }
