@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Monster Boss Battle</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/",
+            "howler": "https://cdn.jsdelivr.net/npm/howler@2.2.3/dist/howler.min.js"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="overlay">
+            <div id="healthUI">
+                <div id="playerHealth">
+                    <div class="health-label">YOU</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="playerHealthFill"></div>
+                    </div>
+                </div>
+                <div id="bossHealth">
+                    <div class="health-label">ROCK MONSTER</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="bossHealthFill"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="gameOver" class="hidden">
+                <h2 id="endMessage"></h2>
+                <button id="restartButton">TRY AGAIN</button>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="main.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
