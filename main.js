@@ -158,8 +158,14 @@ function checkCollisions() {
         
         if (boss.health <= 0) {
             endGame(true);
+            return; 
         }
     }
+    
+    // Keep boss within arena bounds
+    const arenaSize = 14;
+    boss.mesh.position.x = Math.max(-arenaSize + 3, Math.min(arenaSize - 3, boss.mesh.position.x));
+    boss.mesh.position.z = Math.max(-arenaSize + 3, Math.min(arenaSize - 3, boss.mesh.position.z));
 }
 
 function updateUI() {

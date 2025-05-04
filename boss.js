@@ -572,14 +572,18 @@ export class Boss {
                 hand.position.x += this.throwVelocity.x * deltaTime;
                 hand.position.z += this.throwVelocity.z * deltaTime;
                 
-                // Check if hand reached target
+                // Check if hand reached target or hit arena walls
                 const distanceToTarget = new THREE.Vector3(
                     targetPosition.x - hand.position.x,
                     0,
                     targetPosition.z - hand.position.z
                 ).length();
                 
-                if (distanceToTarget < 1) {
+                const arenaSize = 14; // Match arena bounds
+                const hitWall = Math.abs(hand.position.x) > arenaSize - 2 || 
+                                Math.abs(hand.position.z) > arenaSize - 2;
+                
+                if (distanceToTarget < 1 || hitWall) {
                     this.attackPhase = 3;
                     this.attackTimer = this.handReturnTime; // Time before hand returns
                     
@@ -611,6 +615,11 @@ export class Boss {
                         requestAnimationFrame(expandImpact);
                     };
                     expandImpact();
+                    
+                    // Add rock debris effect if hit wall
+                    if (hitWall) {
+                        this.createRockDebris(hand.position);
+                    }
                 }
                 break;
                 
@@ -618,6 +627,11 @@ export class Boss {
                 this.attackTimer -= deltaTime;
                 if (this.attackTimer <= 0) {
                     this.attackPhase = 4;
+                    // Boss reaches into ground animation
+                    this.mesh.position.y -= 0.5;
+                    setTimeout(() => {
+                        this.mesh.position.y += 0.5;
+                    }, 300);
                 }
                 break;
                 
@@ -628,11 +642,59 @@ export class Boss {
                 // Check if hand is close enough to original position
                 const distanceToOriginal = hand.position.distanceTo(this.initialHandPosition);
                 if (distanceToOriginal < 0.5) {
-                    // Reset
+                    // Reset attack
+                    hand.position.copy(this.initialHandPosition);
                     this.currentAttack = null;
                     this.attackTimer = 2; // Cooldown before next attack
                 }
                 break;
+        }
+    }
+    
+    createRockDebris(position) {
+        // Create small rock particles for debris effect
+        for (let i = 0; i < 8; i++) {
+            const rockGeometry = new THREE.IcosahedronGeometry(0.2, 0);
+            const rockMaterial = new THREE.MeshStandardMaterial({
+                color: 0x8B4513,
+                roughness: 1,
+                metalness: 0
+            });
+            const debris = new THREE.Mesh(rockGeometry, rockMaterial);
+            debris.position.copy(position);
+            
+            // Random velocity
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 3;
+            debris.velocity = new THREE.Vector3(
+                Math.cos(angle) * speed,
+                4 + Math.random() * 2,
+                Math.sin(angle) * speed
+            );
+            
+            this.scene.add(debris);
+            
+            // Animate and remove
+            let lifetime = 1;
+            const animateDebris = () => {
+                lifetime -= 0.016;
+                if (lifetime <= 0) {
+                    this.scene.remove(debris);
+                    return;
+                }
+                
+                debris.position.x += debris.velocity.x * 0.016;
+                debris.position.y += debris.velocity.y * 0.016;
+                debris.position.z += debris.velocity.z * 0.016;
+                
+                debris.velocity.y -= 9.8 * 0.016; // Gravity
+                
+                debris.rotation.x += 0.1;
+                debris.rotation.y += 0.1;
+                
+                requestAnimationFrame(animateDebris);
+            };
+            animateDebris();
         }
     }
     
@@ -924,4 +986,3 @@ export class Boss {
         return false;
     }
 }
-
