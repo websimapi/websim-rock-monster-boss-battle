@@ -103,6 +103,13 @@ export class Player {
         
         if (this.isHoldingSpace) {
             this.spaceHeldTime += deltaTime;
+            
+            // Deplete energy when holding space for running (20% every 0.5 seconds)
+            if (this.spaceHeldTime >= 0.3 && (moveX !== 0 || moveZ !== 0)) {
+                // Calculate energy depletion rate (20% per 0.5 seconds)
+                const depletionRate = this.maxEnergy * 0.2 * (deltaTime / 0.5);
+                this.energy = Math.max(0, this.energy - depletionRate);
+            }
         }
         
         // Move the player
@@ -111,7 +118,7 @@ export class Player {
             let currentSpeed = this.speed;
             
             // Apply speed boost when holding space
-            if (this.isHoldingSpace && this.spaceHeldTime >= 0.3) {
+            if (this.isHoldingSpace && this.spaceHeldTime >= 0.3 && this.energy > 0) {
                 currentSpeed *= this.walkSpeedBoost;
             }
             
