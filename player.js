@@ -76,7 +76,7 @@ export class Player {
         // Move the player
         if (moveX !== 0 || moveZ !== 0) {
             // Calculate movement speed
-            let currentSpeed = this.speed;
+            let currentSpeed = this.isDashing ? this.dashSpeed : this.speed;
             
             // Handle dash
             if (keys.shift && this.dashCooldown <= 0) {
@@ -106,7 +106,9 @@ export class Player {
         }
         
         // Reset dash state
-        this.isDashing = false;
+        if (this.dashCooldown <= 0 && this.isDashing) {
+            this.isDashing = false;
+        }
         
         // Handle attack
         if (keys.space && this.attackCooldown <= 0) {
@@ -175,4 +177,3 @@ export class Player {
         return distance < 3; // Adjust range as needed
     }
 }
-

@@ -76,6 +76,7 @@ function init() {
     // Create game objects
     arena = new BattleArena(scene);
     player = new Player(scene, camera, sounds);
+    player.mesh.position.set(0, 0.75, 10); // Set player spawn position
     boss = new Boss(scene, player, sounds);
     
     // Setup input handlers
@@ -121,7 +122,8 @@ function animate(time = 0) {
     
     if (!gameActive) return;
     
-    const deltaTime = (time - lastTime) / 1000;
+    // Ensure we have a valid delta time to avoid jumps after pauses
+    const deltaTime = Math.min((time - lastTime) / 1000, 0.1);
     lastTime = time;
     
     // Update game objects
