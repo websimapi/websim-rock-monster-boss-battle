@@ -34,6 +34,26 @@ body {
     gap: 20px;
 }
 
+#energyBar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 15px;
+    background-color: #444;
+    border: 2px solid #fff;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+#energyFill {
+    height: 100%;
+    width: 100%;
+    background-color: #3498db;
+    transition: width 0.2s;
+}
+
 .health-label {
     color: white;
     margin-bottom: 5px;
@@ -108,4 +128,3 @@ body {
     z-index: 5;
     pointer-events: none;
 }
-

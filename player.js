@@ -17,6 +17,16 @@ export class Player {
         this.invulnerable = false;
         this.invulnerabilityTime = 0;
         
+        // New energy system for dash
+        this.maxEnergy = 100;
+        this.energy = this.maxEnergy;
+        this.energyPerDash = 33; // 33% energy per dash
+        this.energyRechargeRate = 20; // Points per second
+        this.isHoldingSpace = false;
+        this.spaceHeldTime = 0;
+        this.walkSpeedBoost = 1.2; // 20% speed boost when holding space
+        this.mousePosition = new THREE.Vector2();
+        
         this.createPlayer();
     }
     
@@ -57,7 +67,12 @@ export class Player {
         this.mesh.add(this.arrow);
     }
     
-    update(deltaTime, keys) {
+    update(deltaTime, keys, mousePosition) {
+        // Store mouse position for dash direction
+        if (mousePosition) {
+            this.mousePosition = mousePosition;
+        }
+        
         // Handle movement
         let moveX = 0;
         let moveZ = 0;
@@ -73,26 +88,52 @@ export class Player {
             moveZ /= Math.sqrt(2);
         }
         
+        // Handle space key for dash/speed boost
+        if (keys.space && !this.isHoldingSpace) {
+            // Space just pressed
+            this.isHoldingSpace = true;
+            this.spaceHeldTime = 0;
+        } else if (!keys.space && this.isHoldingSpace) {
+            // Space just released - trigger dash if not held too long
+            if (this.spaceHeldTime < 0.3 && this.energy >= this.energyPerDash) { // 300ms threshold
+                this.triggerDash(moveX, moveZ);
+            }
+            this.isHoldingSpace = false;
+        }
+        
+        if (this.isHoldingSpace) {
+            this.spaceHeldTime += deltaTime;
+        }
+        
         // Move the player
         if (moveX !== 0 || moveZ !== 0) {
             // Calculate movement speed
-            let currentSpeed = this.isDashing ? this.dashSpeed : this.speed;
+            let currentSpeed = this.speed;
             
-            // Handle dash
-            if (keys.shift && this.dashCooldown <= 0) {
-                this.isDashing = true;
-                this.dashCooldown = 1.5; // 1.5 seconds cooldown
+            // Apply speed boost when holding space
+            if (this.isHoldingSpace && this.spaceHeldTime >= 0.3) {
+                currentSpeed *= this.walkSpeedBoost;
+            }
+            
+            // Apply dash speed if dashing
+            if (this.isDashing) {
                 currentSpeed = this.dashSpeed;
-                this.invulnerable = true;
-                this.invulnerabilityTime = 0.3; // Invulnerable during dash
             }
             
             // Apply movement
             this.mesh.position.x += moveX * currentSpeed * deltaTime;
             this.mesh.position.z += moveZ * currentSpeed * deltaTime;
             
+            // Recharge energy when moving normally (not dashing)
+            if (!this.isDashing) {
+                this.energy = Math.min(this.maxEnergy, this.energy + this.energyRechargeRate * deltaTime);
+            }
+            
             // Rotate player to face movement direction
             this.mesh.rotation.y = Math.atan2(moveX, moveZ);
+        } else if (!this.isDashing) {
+            // Recharge energy when standing still
+            this.energy = Math.min(this.maxEnergy, this.energy + this.energyRechargeRate * 0.5 * deltaTime);
         }
         
         // Keep player within arena bounds (15x15)
@@ -100,18 +141,16 @@ export class Player {
         this.mesh.position.x = Math.max(-arenaSize, Math.min(arenaSize, this.mesh.position.x));
         this.mesh.position.z = Math.max(-arenaSize, Math.min(arenaSize, this.mesh.position.z));
         
-        // Update dash cooldown
-        if (this.dashCooldown > 0) {
+        // Update dash cooldown and state
+        if (this.isDashing) {
             this.dashCooldown -= deltaTime;
+            if (this.dashCooldown <= 0) {
+                this.isDashing = false;
+            }
         }
         
-        // Reset dash state
-        if (this.dashCooldown <= 0 && this.isDashing) {
-            this.isDashing = false;
-        }
-        
-        // Handle attack
-        if (keys.space && this.attackCooldown <= 0) {
+        // Handle attack (moved to right mouse button in main.js)
+        if (keys.attack && this.attackCooldown <= 0) {
             this.attack();
         }
         
@@ -143,6 +182,64 @@ export class Player {
         this.camera.position.x = this.mesh.position.x;
         this.camera.position.z = this.mesh.position.z + 15;
         this.camera.lookAt(this.mesh.position.x, this.mesh.position.y, this.mesh.position.z);
+    }
+    
+    triggerDash(moveX, moveZ) {
+        // Don't dash if already dashing or no energy
+        if (this.isDashing || this.energy < this.energyPerDash) return;
+        
+        // Calculate dash direction based on mouse position or movement direction
+        let dashDirection = new THREE.Vector2();
+        
+        // Check if we have a valid mouse position
+        if (this.mousePosition.x !== 0 || this.mousePosition.y !== 0) {
+            // Convert screen coordinates to 3D world direction
+            // We're creating a ray from the camera to the mouse point
+            const vector = new THREE.Vector3(
+                (this.mousePosition.x / window.innerWidth) * 2 - 1,
+                -(this.mousePosition.y / window.innerHeight) * 2 + 1,
+                0.5
+            );
+            
+            vector.unproject(this.camera);
+            vector.sub(this.camera.position).normalize();
+            
+            // Project the direction onto the XZ plane
+            const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
+            const raycast = new THREE.Raycaster(this.camera.position, vector);
+            const point = new THREE.Vector3();
+            raycast.ray.intersectPlane(floorPlane, point);
+            
+            // Calculate direction from player to intersection point
+            dashDirection.x = point.x - this.mesh.position.x;
+            dashDirection.y = point.z - this.mesh.position.z;
+            dashDirection.normalize();
+        } else if (moveX !== 0 || moveZ !== 0) {
+            // Use movement direction if mouse position isn't available
+            dashDirection.x = moveX;
+            dashDirection.y = moveZ;
+            dashDirection.normalize();
+        } else {
+            // If no movement input and no mouse position, dash forward
+            dashDirection.x = Math.sin(this.mesh.rotation.y);
+            dashDirection.y = Math.cos(this.mesh.rotation.y);
+        }
+        
+        // Start the dash
+        this.isDashing = true;
+        this.dashCooldown = 0.3; // Duration of dash
+        this.invulnerable = true;
+        this.invulnerabilityTime = 0.3; // Invulnerable during dash
+        
+        // Use energy
+        this.energy -= this.energyPerDash;
+        
+        // Apply an immediate boost in the dash direction
+        this.mesh.position.x += dashDirection.x * 2;
+        this.mesh.position.z += dashDirection.y * 2;
+        
+        // Rotate player in the dash direction
+        this.mesh.rotation.y = Math.atan2(dashDirection.x, dashDirection.y);
     }
     
     attack() {

@@ -28,6 +28,7 @@ const sounds = {
 // UI Elements
 const playerHealthFill = document.getElementById('playerHealthFill');
 const bossHealthFill = document.getElementById('bossHealthFill');
+const energyFill = document.getElementById('energyFill');
 const gameOverScreen = document.getElementById('gameOver');
 const endMessage = document.getElementById('endMessage');
 const restartButton = document.getElementById('restartButton');
@@ -39,7 +40,13 @@ const keys = {
     s: false,
     d: false,
     space: false,
-    shift: false
+    attack: false
+};
+
+// Mouse position tracking
+const mouse = {
+    x: 0,
+    y: 0
 };
 
 function init() {
@@ -96,7 +103,6 @@ function setupInputHandlers() {
         if (e.key.toLowerCase() === 's') keys.s = true;
         if (e.key.toLowerCase() === 'd') keys.d = true;
         if (e.key === ' ') keys.space = true;
-        if (e.key === 'Shift') keys.shift = true;
     });
     
     window.addEventListener('keyup', (e) => {
@@ -105,7 +111,30 @@ function setupInputHandlers() {
         if (e.key.toLowerCase() === 's') keys.s = false;
         if (e.key.toLowerCase() === 'd') keys.d = false;
         if (e.key === ' ') keys.space = false;
-        if (e.key === 'Shift') keys.shift = false;
+    });
+    
+    // Track mouse position
+    window.addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+    });
+    
+    // Use right mouse for attack
+    window.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { // Right mouse button
+            keys.attack = true;
+        }
+    });
+    
+    window.addEventListener('mouseup', (e) => {
+        if (e.button === 2) { // Right mouse button
+            keys.attack = false;
+        }
+    });
+    
+    // Prevent context menu on right click
+    window.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
     });
     
     window.addEventListener('resize', () => {
@@ -127,7 +156,7 @@ function animate(time = 0) {
     lastTime = time;
     
     // Update game objects
-    player.update(deltaTime, keys);
+    player.update(deltaTime, keys, mouse);
     boss.update(deltaTime);
     
     // Check for collisions and damage
@@ -172,6 +201,9 @@ function updateUI() {
     // Update health bars
     playerHealthFill.style.width = `${(player.health / player.maxHealth) * 100}%`;
     bossHealthFill.style.width = `${(boss.health / boss.maxHealth) * 100}%`;
+    
+    // Update energy bar
+    energyFill.style.width = `${(player.energy / player.maxEnergy) * 100}%`;
 }
 
 function endGame(playerWon) {
