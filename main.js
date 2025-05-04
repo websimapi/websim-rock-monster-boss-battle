@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Howl } from 'howler';
 import { Player } from './player.js';
 import { Boss } from './boss.js';
 import { BattleArena } from './arena.js';
@@ -201,4 +200,3 @@ function restartGame() {
 
 // Start the game
 init();
-
